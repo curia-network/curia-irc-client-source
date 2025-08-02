@@ -184,6 +184,16 @@ async function handleQueryParams() {
 	if (document.body.classList.contains("public") && document.location.search) {
 		// Set default connection settings from url params
 		const queryParams = Object.fromEntries(params.entries());
+		
+		// Check for autoconnect flag
+		if (params.has("autoconnect")) {
+			removeQueryParams();
+			// Auto-submit network creation instead of showing form
+			socket.emit("network:new", queryParams);
+			return true;
+		}
+		
+		// Fallback: show pre-filled connect form (existing behavior)
 		removeQueryParams();
 		await router.push({name: "Connect", query: queryParams});
 		return true;
