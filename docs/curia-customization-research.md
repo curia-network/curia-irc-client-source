@@ -99,10 +99,9 @@ This document tracks our research for customizing The Lounge IRC client for Curi
 
 ### 2. Dark/Light Mode Root Marker
 - **Current State**: No automatic system preference detection
-- **Implementation**: 
-  - Add `data-theme` or class on `<html>` or `#viewport` 
-  - Modify `client/css/style.css` CSS variables based on marker
-  - Create complementary light/dark theme files
+- **Goal**: Set theme marker based on query parameter from iframe URL
+- **Challenge**: Query params are processed and removed during autoconnect flow
+- **Implementation Strategy**: Capture → Store → Apply pattern
 
 ### 3. Single Channel Mode
 - **Target Components**: 
@@ -122,12 +121,100 @@ This document tracks our research for customizing The Lounge IRC client for Curi
 - **Implementation**: Add HTTP POST to Curia API after message processing
 - **Data**: Send message content, channel, user, timestamp to Curia notification system
 
+## Dark/Light Theme Implementation Roadmap
+
+### Problem Analysis
+- **Current Autoconnect Flow**: `client/js/socket-events/init.ts` (lines 188-194)
+  - Query params extracted: `const queryParams = Object.fromEntries(params.entries())`
+  - Autoconnect triggered: `socket.emit("network:new", queryParams)`
+  - URL cleaned: `removeQueryParams()` removes all query parameters
+  - **Issue**: Theme information lost after URL cleanup
+
+### Implementation Strategy
+
+#### Phase 1: Capture Theme Parameter
+**File**: `client/js/socket-events/init.ts`
+**Location**: Before `removeQueryParams()` call (line 190)
+**Action**:
+```typescript
+// Extract and store theme before removing query params
+if (params.has("theme")) {
+    storage.set("curia.theme", params.get("theme") || "");
+}
+```
+
+#### Phase 2: Apply Theme Marker  
+**File**: `client/js/vue.ts`
+**Location**: After Vue app initialization (after line 27)
+**Action**:
+```typescript
+// Apply theme marker to body element
+const savedTheme = storage.get("curia.theme");
+if (savedTheme) {
+    document.body.setAttribute("data-curia-theme", savedTheme);
+    // Optional: Also add as CSS class
+    document.body.classList.add(`curia-theme-${savedTheme}`);
+}
+```
+
+#### Phase 3: CSS Integration
+**Target**: External theme package (`/Users/florian/Git/curia/curia-irc-theme`)
+**Implementation**: CSS selectors targeting the theme marker
+```css
+/* Light theme styles */
+body[data-curia-theme="light"] {
+    --primary-color: #ffffff;
+    /* ... light theme variables */
+}
+
+/* Dark theme styles */  
+body[data-curia-theme="dark"] {
+    --primary-color: #1a1a1a;
+    /* ... dark theme variables */
+}
+
+/* Fallback for no theme specified */
+body:not([data-curia-theme]) {
+    /* Default theme */
+}
+```
+
+### Flow Diagram
+```
+Curia App → iframe URL (?autoconnect=true&theme=dark)
+     ↓
+IRC Client loads → init.ts processes query params
+     ↓
+Extract theme param → storage.set("curia.theme", "dark")
+     ↓  
+removeQueryParams() → URL cleaned
+     ↓
+Vue app initializes → Read storage.get("curia.theme")
+     ↓
+Apply marker → body[data-curia-theme="dark"]
+     ↓
+External CSS → Responds to theme marker
+```
+
+### Technical Details
+- **Storage Key**: `"curia.theme"` (namespaced to avoid conflicts)
+- **Supported Values**: `"light"`, `"dark"` (extensible for future themes)
+- **Fallback**: No marker applied if no theme specified
+- **Persistence**: Uses existing `localStorage.ts` wrapper with error handling
+- **CSS Specificity**: `body[data-curia-theme="X"]` provides high specificity
+
+### Integration Points
+1. **Query Parameter**: `?theme=dark` or `?theme=light` in iframe URL
+2. **Storage**: Persisted in localStorage between page loads
+3. **DOM**: Applied as data attribute and/or CSS class
+4. **External CSS**: Theme package reads marker for styling
+
 ## Questions & Next Steps
 
 ### Top 3 Questions:
-1. **Theme Integration**: Should we implement automatic dark/light mode detection based on system preferences, or manual toggle only?
+1. **Theme Values**: Should we support only "light"/"dark" or additional theme variants?
 2. **Single Channel Mode**: Do you want to completely hide the sidebar, or just the network/channel list while keeping connect/settings buttons?
 3. **Notification Scope**: Should the Curia notification relay send ALL messages or only mentions/highlights/DMs?
 
 ---
-*Last updated: [Current exploration]*
+*Last updated: Dark/Light theme roadmap completed*
