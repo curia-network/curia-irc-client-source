@@ -1,7 +1,6 @@
 import socket from "../socket";
 import upload from "../upload";
 import {store} from "../store";
-import storage from "../localStorage";
 
 socket.once("configuration", function (data) {
 	store.commit("serverConfiguration", data);
@@ -27,14 +26,6 @@ socket.once("configuration", function (data) {
 	} else if (currentTheme.themeColor) {
 		(document.querySelector('meta[name="theme-color"]') as HTMLMetaElement).content =
 			currentTheme.themeColor;
-	}
-
-	// Phase 2: Apply Curia theme marker to body element after all theme initialization
-	const savedTheme = storage.get("curia.theme");
-	if (savedTheme) {
-		document.body.setAttribute("data-curia-theme", savedTheme);
-		// Also add as CSS class for additional styling flexibility
-		document.body.classList.add(`curia-theme-${savedTheme}`);
 	}
 
 	if (document.body.classList.contains("public")) {

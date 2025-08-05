@@ -187,9 +187,14 @@ async function handleQueryParams() {
 		
 		// Check for autoconnect flag
 		if (params.has("autoconnect")) {
-			// Phase 1: Capture theme parameter before removing query params
+			// Apply theme directly from URL parameter (no storage needed)
 			if (params.has("theme")) {
-				storage.set("curia.theme", params.get("theme") || "");
+				const theme = params.get("theme");
+				if (theme) {
+					document.body.setAttribute("data-curia-theme", theme);
+					document.body.classList.add(`curia-theme-${theme}`);
+					console.log('[Theme] Applied theme directly:', theme);
+				}
 			}
 			
 			removeQueryParams();
