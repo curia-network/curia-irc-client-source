@@ -197,6 +197,16 @@ async function handleQueryParams() {
 				}
 			}
 			
+			// Apply mode directly from URL parameter (same pattern as theme)
+			if (params.has("mode")) {
+				const mode = params.get("mode");
+				if (mode) {
+					document.body.setAttribute("data-curia-mode", mode);
+					document.body.classList.add(`curia-mode-${mode}`);
+					console.log('[Mode] Applied mode directly:', mode);
+				}
+			}
+			
 			removeQueryParams();
 			// Auto-submit network creation instead of showing form
 			socket.emit("network:new", queryParams);

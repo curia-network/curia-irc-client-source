@@ -8,4 +8,4 @@ IRC_HOST="localhost" IRC_PORT="6698" IRC_TLS="true" IRC_REJECT_UNAUTHORIZED="fal
 
 
 
- NODE_ENV=production yarn build
+NODE_ENV=production yarn build
