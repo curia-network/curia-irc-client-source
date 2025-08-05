@@ -187,6 +187,11 @@ async function handleQueryParams() {
 		
 		// Check for autoconnect flag
 		if (params.has("autoconnect")) {
+			// Phase 1: Capture theme parameter before removing query params
+			if (params.has("theme")) {
+				storage.set("curia.theme", params.get("theme") || "");
+			}
+			
 			removeQueryParams();
 			// Auto-submit network creation instead of showing form
 			socket.emit("network:new", queryParams);
