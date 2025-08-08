@@ -38,9 +38,11 @@ socket.on("init", async function (data) {
 			return;
 		}
 
-		// If we are on an unknown route or still on SignIn component
-		// then we can open last known channel on server, or Connect window if none
-		if (!router.currentRoute?.value?.name || router.currentRoute?.value?.name === "SignIn") {
+    // If we are on an unknown route or still on SignIn component
+    // then we can open last known channel on server, or Connect window if none
+    // Skip this when a specific focus is requested (handled by network/join hooks)
+    const hasRequestedFocus = !!document.body.getAttribute('data-curia-focus');
+    if ((!router.currentRoute?.value?.name || router.currentRoute?.value?.name === "SignIn") && !hasRequestedFocus) {
 			const channel = store.getters.findChannel(data.active);
 
 			if (channel) {
@@ -186,7 +188,7 @@ async function handleQueryParams() {
 		const queryParams = Object.fromEntries(params.entries());
 		
 		// Check for autoconnect flag
-		if (params.has("autoconnect")) {
+    if (params.has("autoconnect")) {
 			// Apply theme directly from URL parameter (no storage needed)
 			if (params.has("theme")) {
 				const theme = params.get("theme");
@@ -206,7 +208,18 @@ async function handleQueryParams() {
 					console.log('[Mode] Applied mode directly:', mode);
 				}
 			}
-			
+      
+      // Capture desired focus channel before removing query params
+      const focusRaw = params.get("focus") || (params.get("join") || "").split(",")[0] || "";
+      if (focusRaw) {
+        let focusName = focusRaw;
+        try { focusName = decodeURIComponent(focusName); } catch {}
+        if (!focusName.startsWith("#") && !focusName.startsWith("&") && !focusName.startsWith("+")) {
+          focusName = `#${focusName}`;
+        }
+        document.body.setAttribute("data-curia-focus", focusName);
+      }
+
 			removeQueryParams();
 			// Auto-submit network creation instead of showing form
 			socket.emit("network:new", queryParams);

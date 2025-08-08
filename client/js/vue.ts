@@ -8,6 +8,7 @@ import storage from "./localStorage";
 import {router} from "./router";
 import socket from "./socket";
 import "./socket-events"; // this sets up all socket event listeners, do not remove
+import "./kiosk-focus";
 import eventbus from "./eventbus";
 
 import "./webpush";
@@ -25,6 +26,31 @@ VueApp.use(store, key);
 
 VueApp.mount("#app");
 socket.open();
+
+// Resolve target channel id once (for single-channel mode routing)
+(async () => {
+  const mode = document.body.getAttribute('data-curia-mode');
+  const focusRaw = document.body.getAttribute('data-curia-focus');
+  if (mode !== 'single' || !focusRaw) return;
+  const normalize = (s: string) => {
+    try { s = decodeURIComponent(s); } catch {}
+    s = (s || '').trim().toLowerCase();
+    if (s.startsWith('#') || s.startsWith('&') || s.startsWith('+')) s = s.slice(1);
+    return s;
+  };
+  const goal = normalize(focusRaw);
+  // Wait until networks load
+  const wait = (cond: () => boolean) => new Promise<void>((r) => { const id = setInterval(() => { if (cond()) { clearInterval(id); r(); } }, 100); });
+  await wait(() => store.state.appLoaded && (store.state.networks?.length || 0) > 0);
+  // Find channel id
+  for (const net of store.state.networks) {
+    const found = (net.channels || []).find((c) => normalize(c.name || '') === goal);
+    if (found) {
+      document.body.setAttribute('data-curia-target-id', String(found.id));
+      break;
+    }
+  }
+})();
 
 store.watch(
 	(state) => state.sidebarOpen,

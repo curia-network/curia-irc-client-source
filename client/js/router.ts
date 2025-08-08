@@ -95,6 +95,41 @@ const router = createRouter({
 	],
 });
 
+function normalizeChannelName(s: string): string {
+  try { s = decodeURIComponent(s); } catch {}
+  s = (s || "").trim().toLowerCase();
+  if (s.startsWith('#') || s.startsWith('&') || s.startsWith('+')) s = s.slice(1);
+  return s;
+}
+
+// Synchronous single-channel guard: runs from app start on every navigation
+router.beforeEach((to, from, next) => {
+  const mode = document.body.getAttribute('data-curia-mode');
+  const focusRaw = document.body.getAttribute('data-curia-focus');
+  if (mode !== 'single' || !focusRaw) {
+    next();
+    return;
+  }
+
+  const wanted = normalizeChannelName(focusRaw);
+
+  // Try to resolve target id from current store state (may not be loaded yet)
+  let targetId: string | null = null;
+  for (const net of (store.state.networks || [])) {
+    const found = (net.channels || []).find((c: any) => normalizeChannelName(c.name || '') === wanted);
+    if (found) { targetId = String(found.id); break; }
+  }
+
+  if (targetId) {
+    if (to.name !== 'RoutedChat' || String(to.params.id) !== targetId) {
+      next({ name: 'RoutedChat', params: { id: targetId }, replace: true });
+      return;
+    }
+  }
+
+  next();
+});
+
 router.beforeEach((to, from, next) => {
 	// If user is not yet signed in, wait for appLoaded state to change
 	// unless they are trying to open SignIn (which can be triggered in auth.js)
@@ -109,6 +144,8 @@ router.beforeEach((to, from, next) => {
 
 	next();
 });
+
+// Single-channel routing is enforced by kiosk-focus module
 
 router.beforeEach((to, from) => {
 	// Disallow navigating to non-existing routes
